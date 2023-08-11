@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import glob
+import boto3
 from typing import List
 from dotenv import load_dotenv
 from multiprocessing import Pool
@@ -40,6 +41,13 @@ embedding_type = os.environ.get("EMBEDDING_TYPE", 'openai')
 model_path = os.environ.get("MODEL_PATH", "")
 database_type = os.environ.get("DATABASE_TYPE", "faiss")
 openai.api_key = os.environ.get("OPENAI_API_KEY", "")
+verbose = os.environ.get("VERBOSE", 'True').lower() in ('true', '1', 't')
+# aws
+aws_enable = os.environ.get("AWS_ENABLE", 'True').lower() in ('true', '1', 't')
+aws_access_key = os.environ.get("AWS_ACCESS_KEY", "")
+aws_secret_key = os.environ.get("AWS_SECRET_KEY", "")
+aws_region = os.environ.get("AWS_REGION", "us-east-1")
+aws_bucket_name = os.environ.get("AWS_BUCKET_NAME", "")
 
 # chunk_size = 500
 # chunk_overlap = 50
@@ -175,9 +183,29 @@ def create_embedding(embedding_type:str, model_path:str = "", embedding_model_na
         case _:
             return LlamaCppEmbeddings(model_path=model_path)
 
+def fetch_aws_documents(verbose:bool, source_dir:str, bucket_name:str, access_key:str, secret_key:str) -> None:
+    if verbose:
+        print("fetching aws documents")
+    session = boto3.Session(
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key
+    )
+    s3 = session.resource('s3')
+
+    # select bucket
+    source_bucket = s3.Bucket(bucket_name)
+
+    for s3_object in source_bucket.objects.all():
+        path, filename = os.path.split(s3_object.key)
+        if verbose:
+            print(f"downloading {path}/{filename}")
+        source_bucket.download_file(s3_object.key, os.path.join(source_dir, filename))
+
 
 def main() -> None:
     embedding = create_embedding(embedding_type=embedding_type, model_path=model_path, embedding_model_name=embedding_model_name)
+    if aws_enable:
+        fetch_aws_documents(verbose, source_directory, aws_bucket_name, aws_access_key, aws_secret_key)
     match database_type:
         case "chroma":
             # prefer huggingface
@@ -207,7 +235,7 @@ def main() -> None:
             print(f"Creating embedding. May take some minutes...")
             db = FAISS.from_documents(texts, embedding)
             db.save_local(persist_directory)
-    print(f"Ingestion complete! You can now run run.sh to query your documents")
+    print(f"Ingestion complete!")
 
 
 if __name__ == "__main__":
