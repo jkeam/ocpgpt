@@ -4,7 +4,7 @@ OpenShift GPT Solution
 
 ## Prerequisite
 
-1. Python 3.11
+1. Python 3.11 or later
 
 ## Setup
 
@@ -25,7 +25,7 @@ OpenShift GPT Solution
 
 4. Create an `.env` file that looks like
 
-    ```ini
+    ```dotenv
     OPEN_API_KEY=YOUR_KEY_HERE
     ```
 
@@ -46,3 +46,8 @@ OpenShift GPT Solution
     ```shell
     chainlit run app.py
     ```
+
+## References
+
+1. [Inspired by this](https://github.com/redhat-et/foundation-models-for-documentation/blob/master/notebooks/langchain-openai.ipynb)
+2. [Chroma DB](https://python.langchain.com/en/latest/modules/indexes/vectorstores/examples/chroma.html)
